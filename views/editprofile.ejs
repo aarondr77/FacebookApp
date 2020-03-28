@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style type="text/css">
+	body {
+ 		padding-top: 40px;
+ 		padding-bottom: 40px;
+ 		background-color: white;
+ 	}
+ 	.login-box {
+ 		max-width: 330px;
+ 		margin: 0 auto;
+ 	}
+ 		.login-box .form-control {
+ 		margin-bottom: 10px;
+ 	}
+</style>
+
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script>
+
+
+<script>
+var currentUser = "<%- currentUser %>";
+
+var edit = function(e) {
+  var name = $('#name').val();
+  var email = $('#email').val();
+  var affiliation = $('#affiliation').val();
+
+  if (name != "") {
+    $.ajax({
+      type: "post",
+      url: "/changename",
+      data: {user_id: currentUser, name: name},
+      success: function(data) {
+        if (data.success) {
+        }
+      }
+    });
+  }
+  if (email != "") {
+    $.ajax({
+      type: "post",
+      url: "/changeemail",
+      data: {user_id: currentUser, email: email},
+      success: function(data) {
+        if (data.success) {
+        }
+      }
+    });
+  }
+  if (affiliation != "") {
+    $.ajax({
+      type: "post",
+      url: "/changeaffiliation",
+      data: {user_id: currentUser, affiliation: affiliation},
+      success: function(data) {
+        if (data.success) {
+        }
+      }
+    });
+  }
+}
+
+</script>
+
+<body>
+  <h1>Edit Profile</h1>
+	<form action="/homepage" method="get">
+		<font> Name:</font> <input class ="form-control" id="name" autocomplete="off" />
+    <font> <br> E-Mail:</font> <input class ="form-control" id="email" autocomplete="off" />
+    <font> <br> Affiliation:</font> <input class ="form-control" id="affiliation" autocomplete="off" />
+    <br>
+		<button class = "btn btn-lg btn-primary btn-block" onClick = "edit(event)"> Save </button>
+	</form>
+
+  <br>
+  <br>
+
+
+</body>
+</html>

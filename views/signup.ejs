@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style type="text/css">
+	body {
+ 		padding-top: 40px;
+ 		padding-bottom: 40px;
+ 		background-color: white;
+ 	}
+ 	.login-box {
+ 		max-width: 330px;
+ 		margin: 0 auto;
+ 	}
+ 		.login-box .form-control {
+ 		margin-bottom: 10px;
+ 	}
+</style>
+
+<body>
+
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript">
+
+		function signup(e) {
+			e.preventDefault();
+
+			var username = document.getElementById("username").value;
+			var password = document.getElementById("password").value;
+			var name = document.getElementById("name").value;
+			var email = document.getElementById("email").value;
+			var affiliation = document.getElementById("affiliation").value;
+			var hashed_password = CryptoJS.SHA256(password).toString();
+
+			document.getElementById("username").value = "";
+			document.getElementById("password").value = "";
+			document.getElementById("name").value = "";
+			document.getElementById("email").value = "";
+			document.getElementById("affiliation").value = "";
+
+			$.ajax({
+		 		type: "post",
+		 		url: "/addaccount",
+		 		data: {
+					user_id: username,
+			    hashed_password: hashed_password,
+					name: name,
+					email: email,
+					affiliation: affiliation
+		 		},
+		 		success: function (data) {
+					if (data.success) {
+						window.location.href = '/homepage';
+					} else {
+						alert(data.error);
+					}
+				}
+	 		});
+
+
+		}
+
+	</script>
+
+	<h1>Sign Up Page</h1>
+		<form>
+			<font> Username: </font> <input class ="form-control" id="username" autocomplete="off" />
+	    <font> Password: </font> <input class ="form-control" id="password" autocomplete="off" />
+			<font> Name: </font> <input class ="form-control" id="name" autocomplete="off" />
+	    <font> Email: </font> <input class ="form-control" id="email" autocomplete="off" />
+			<font> Affiliation: </font> <input class ="form-control" id="affiliation" autocomplete="off" />
+	    <br>
+			<button class = "btn btn-lg btn-primary btn-block" onClick = "signup(event)"> Sign Up </button>
+		</form>
+
+		<br>
+		<br>
+
+		<form method = "get" action = "/login">
+	    <button class = "btn btn-lg btn-primary btn-block"> Back to Login </button>
+	  <form>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      .column {
+        float: left;
+        width: 50%;
+        padding: 10px;
+      }
+
+      .row:after {
+        content: "";
+        display: table;
+        clear: both;
+      }
+    </style>
+
+    <style type="text/css">
+    	body {
+     		padding-top: 40px;
+     		padding-bottom: 40px;
+     		background-color: white;
+     	}
+     	.login-box {
+     		max-width: 330px;
+     		margin: 0 auto;
+     	}
+     		.login-box .form-control {
+     		margin-bottom: 10px;
+     	}
+    </style>
+  </head>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    var socket = io();
+  </script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script type="text/javascript">
+
+  var currentUser;
+  var socketID;
+  var currentRoom;
+
+  window.onLoad = setUpPage();
+
+  function setUpPage () {
+    $.ajax({
+      type: "get",
+      url: "/getCurrentUser",
+      success: function(data) {
+        currentUser = data.currentUser;
+        loadChat();
+        loadListOfChats();
+      }
+    });
+  }
+
+  function loadListOfChats () {
+    $.ajax({
+      type: "get",
+      url: "/getuserchats",
+      data: {user_id: currentUser},
+      success: function(data) {
+        if (data.success && data.chats) {
+          for (var i = 0; i < data.chats.length; i++) {
+            var chat_id = JSON.parse(data.chats[i]).chat_id;
+            if (chat_id != null) {
+              createChatDiv(chat_id);
+              socket.emit('joinroom', chat_id);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function createChatDiv (chat_id) {
+    $.ajax({
+      type: "get",
+      url: "/getchatusers",
+      data: {chat_id: chat_id},
+      success: function(data) {
+        if (data.success) {
+          var newChatDiv = document.createElement('div');
+          newChatDiv.id = chat_id;
+          var chatName = "";
+          for (var j = 0; j < data.users.length; j++) {
+            chatName += data.users[j] + " ";
+          }
+          newChatDiv.append(chatName);
+          newChatDiv.style = "background-color:lightblue";
+          document.getElementById('existingChats').appendChild(newChatDiv);
+          var viewbutton = document.createElement("BUTTON");
+          viewbutton.id = "viewButton" + chat_id;
+          document.getElementById(chat_id).append(viewbutton);
+          viewbutton.addEventListener('click', function () {
+            loadChat(chat_id);
+          });
+        }
+      }
+    });
+  }
+
+  function loadChat (chat_id) {
+    currentRoom = chat_id;
+    var chat_id_obj = {chat_id: chat_id};
+    var chatDivToClear = document.getElementById('chatMessages');
+    if (chatDivToClear != null) {
+      while (chatDivToClear.firstChild) {
+        chatDivToClear.removeChild(chatDivToClear.firstChild);
+      }
+    }
+    if (currentRoom) {
+      $.ajax({
+        type: "get",
+        url: "/getchat",
+        data: chat_id_obj,
+        success: function(data) {
+
+          if (data.messages != null) {
+            data.messages.sort(function(a, b) {
+              a = JSON.parse(a);
+              b = JSON.parse(b);
+              var keyA = new Date(a.timestamp),
+              keyB = new Date(b.timestamp);
+              // Compare the 2 dates
+              if(keyA < keyB) return -1;
+              if(keyA > keyB) return 1;
+              return 0;
+            });
+
+            for (var i = 0; i < data.messages.length; i ++) {
+              appendMessage(JSON.parse(data.messages[i]), currentRoom);
+            }
+          }
+        }
+      });
+      socket.emit('joinroom', chat_id);
+    }
+  }
+
+
+  var sendMessage = function (e) {
+    e.preventDefault();
+
+    var message = $('#m').val();
+    if (message != "") {
+      var routeData = {
+        user_id: currentUser,
+        chat_id: currentRoom,
+        data: message
+      };
+
+
+      $.ajax({
+        type: "post",
+        url: "/addmessage",
+        data: routeData,
+        success: function(data) {
+          if (data.success) {
+            $('#m').val('');
+          }
+        }
+      });
+      socket.emit('sendmessage', routeData);
+    }
+  }
+
+  function leaveChat (e) {
+    e.preventDefault();
+
+    if (currentRoom) {
+      var routeData = {
+        user_id: currentUser,
+        chat_id: currentRoom
+      };
+
+      $.ajax({
+        type: "post",
+        url: "/leavechat",
+        data: routeData,
+        success: function(data) {
+          if (data.success) {
+            socket.emit('leaveroom', currentRoom);
+          }
+          currentRoom = null;
+        }
+      });
+    }
+  }
+
+
+
+  var createNewChat = function (e) {
+    e.preventDefault();
+
+    var stringOfNames = $('#names').val();
+    var user_id_array = stringOfNames.split(",").map(function(item) {
+      return item.trim();
+    });
+
+    user_id_array.push(currentUser);
+    var routeData = {
+      users: user_id_array
+    };
+
+    $.ajax({
+      type: "post",
+      url: "/addchat",
+      data: routeData,
+      success: function(data) {
+
+        if (data.success) {
+          $('#names').val('');
+          // make new chat div to display new chat
+          var newChatDiv = document.createElement('div');
+          var chatName = "";
+          for (var i = 0; i < user_id_array.length; i++) {
+            chatName += user_id_array[i] + " ";
+          }
+          newChatDiv.id = data.chat_id;
+          newChatDiv.style = "background-color:lightblue";
+          newChatDiv.append(chatName);
+          var existingChatsDiv = document.getElementById('existingChats');
+          existingChatsDiv.insertBefore(newChatDiv, existingChatsDiv.firstChild);
+          var viewbutton = document.createElement("BUTTON");
+          currentRoom = data.chat_id;
+          viewbutton.id = "viewButton" + currentRoom;
+          document.getElementById(data.chat_id).append(viewbutton);
+          viewbutton.addEventListener('click', function () {
+            loadChat(data.chat_id);
+          });
+        }
+      }
+    });
+  }
+
+  socket.on('sendmessage', function(msg, room) {
+    appendMessage(msg, room);
+  });
+
+  var appendMessage = function (msg, room) {
+
+    if (currentRoom == room) {
+      var newDiv = document.createElement('div');
+      var message = " said by " + msg.user_id + ': ' + msg.data;
+      newDiv.append(message);
+      var chatMessagesDiv = document.getElementById('chatMessages');
+      chatMessagesDiv.insertBefore(newDiv, chatMessagesDiv.firstChild);
+    } else {
+      var newDiv = document.createElement('div');
+      newDiv.id = "newalert";
+      var message = " new message from chat with " + msg.user_id + ': ' + msg.data;
+      newDiv.append(message);
+      var alertDiv = document.getElementById('alertDiv');
+      alertDiv.style = "background-color:red";
+      alertDiv.insertBefore(newDiv, alertDiv.firstChild);
+      setTimeout(function () {
+        document.getElementById("newalert").remove();
+      }, 5000);
+    }
+  }
+
+  function addusertochat(e) {
+    e.preventDefault();
+
+    var new_user_id;
+    var person = prompt("please type the username of the person you want to add to this chat", "type username here");
+    if (person == null || person == "") {
+      new_user_id = "";
+    } else {
+      new_user_id = person;
+    }
+
+    var routeData = {
+      user_id: person,
+      chat_id: currentRoom
+    };
+
+    $.ajax({
+      type: "post",
+      url: "/addusertochat",
+      data: routeData,
+      success: function(data) {
+        if (data.success) {
+
+        }
+      }
+    });
+
+  }
+
+</script>
+
+<body>
+  <h1> Chat Box </h1>
+  <div id = "alertDiv"> </div>
+
+  <div class = "row">
+    <div class = "column" style = "background-color:#aaa;">
+      <div id = "chatDiv">
+        <form>
+          <input id="m" autocomplete="off" class ="form-control" />
+          <button onClick = "sendMessage(event)"> Send </button>
+          <button onClick = "leaveChat(event)"> Leave Chat </button>
+          <button onClick = "addusertochat(event)"> Add User </button>
+        </form>
+        <div id = "chatMessages">
+        </div>
+      </div>
+    </div>
+  <div id = "column" style = "background-color:#fff;">
+    <div id = "newChatForm">
+      <form>
+        <font> Enter names separated by commas <br></font>
+        <font> to create a new chat <br></font>
+        <input id="names" autocomplete="off" class ="form-control" />
+        <button onClick = "createNewChat(event)"> Create Chat </button>
+      </form>
+      <br>
+      <br>
+      <br>
+      <div id = "existingChats">
+      </div>
+    </div>
+  </div>
+
+  <br>
+  <br>
+
+  <center>
+    <form method = "get" action = "/homepage">
+      <button class = "btn btn-lg btn-primary btn-block"> Return to your homepage </button>
+    </form>
+  </center>
+
+
+</body>
+
+</html>

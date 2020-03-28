@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    * {
+        box-sizing: border-box;
+      }
+
+      .space{
+        height: 75px;
+      }
+
+      .search{
+        position: fixed;
+      }
+
+      .columnP {
+        float: left;
+        width: 25%;
+        padding: 20px;
+        position: fixed;
+      }
+
+      .columnA {
+        float: left;
+        width: 25%;
+        padding: 20px;
+      }
+
+      .columnE {
+        float: left;
+        width: 37.5%;
+        padding: 20px;
+      }
+
+      .row:after {
+        content: "";
+        display: table;
+        clear: both;
+      }
+
+      .dropdown {
+        position: absolute;
+        width: 220px;
+      }
+
+      .comment {
+        width: 220px;
+      }
+
+  </style>
+
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script type="text/javascript">
+    var profile = "<%- profile %>";
+    var count = 0;
+
+    window.onLoad = getNewsfeed();
+    window.onLoad = getUserData();
+    window.onLoad = getUserFriendRecs();
+
+    function getUserFriendRecs() {
+        $.ajax({
+          type: "get",
+          url: "/getuserdata",
+          data: {user: profile},
+          success: function(data) {
+            if (data.friend_recs != null) {
+              $("<div id='friends' class='columnE'>" +
+                "<h3>Friend Recommendations</h3>" +
+                "</div>").appendTo(document.getElementById("friendrecs"));
+              var frienddiv = document.createElement('div');
+              for (var i = 0; i < data.friend_recs.length; i++) {
+                var user = data.friend_recs[i];
+                $("<div>" +
+                 "<input class = 'btn btn-lg btn-primary btn-block' type='button' id='sugg"+i+"' value='"+data.friend_recs[i]+"'onclick='searchFriend("+i+")' />" +
+                 "</div> <br> <br> ").appendTo(frienddiv);
+              }
+              document.getElementById("friends").append(frienddiv);
+            }
+          }
+        });
+    }
+
+    function getUserData () {
+    $.ajax({
+      type: "get",
+      url: "/getuserdata",
+      data: {user: profile},
+      success: function(data) {
+        if (data.success) {
+          document.getElementById("username").value = "";
+          document.getElementById("name").value = "";
+          document.getElementById("email").value = "";
+          document.getElementById("affiliation").value = "";
+          document.getElementById("username").append(profile);
+          document.getElementById("name").append(data.name);
+          document.getElementById("email").append(data.email);
+          document.getElementById("affiliation").append(data.affiliation);
+        }
+      }
+    });
+  }
+
+    function getNewsfeed () {
+    $.ajax({
+      type: "get",
+      url: "/getfeed",
+      data: {user_id: profile},
+      success: function(data) {
+        if (data.success) {
+          if (data.posts != null) {
+            var postdivs = document.getElementById("posts");
+            postdivs.innerHTML = '';
+            for (var i = 0; i < data.posts.length; i ++) {
+              var post = data.posts[i];
+              $.ajax({
+                type: "get",
+                url: "/getpostcomments",
+                data: {post_id: post},
+                success: function(data) {
+                  if (data.success) {
+                    appendPost(data);
+                  }
+                }
+              });
+            }
+          }
+        }
+      }
+    });
+  }
+
+  var appendPost = function(post) {
+    var newDiv = document.createElement('div');
+    var text = post.text;
+    var comments = post.comments;
+    var post_id = post.post_id;
+    var likes = post.likes;
+    var user = post.user_id;
+    newDiv.append("Post by " + user + ": " + text);
+    if (comments != null) {
+    comments.sort(function(a, b) {
+              var commentA = JSON.parse(a);
+              var commentB = JSON.parse(b);
+              var keyA = new Date(commentA.timestamp),
+              keyB = new Date(commentB.timestamp);
+              if(keyA < keyB) return -1;
+              if(keyA > keyB) return 1;
+              return 0;
+            });
+    for (var i = 0; i < comments.length; i++) {
+      var comment = JSON.parse(comments[i]);
+      var commentDiv = document.createElement('div');
+      commentDiv.append(comment.user_id + ": " + comment.data);
+      newDiv.appendChild(commentDiv);
+    }
+  }
+    if (likes != null) {
+      $("<div id='likenumber" + count + "'>" +
+        likes.length + " Like(s)" +
+        "</div>").appendTo(newDiv);
+      if (likes.indexOf(JSON.stringify({user_id: profile})) == -1 ) {
+        $("<div id='likelink" + count + "'>" +
+          "<form>" +
+          "<input type='hidden' id='post_id" + count + "' value=" + post_id + " />" +
+          "<input class = 'btn btn-lg' type='button' value='Like!' onclick='addlike(e)' />" +
+          "</form>").appendTo(newDiv);
+        }
+      } else {
+        $("<div id='likenumber" + count + "'>" +
+          0 + " Like(s)" +
+          "</div>").appendTo(newDiv);
+        $("<div id='likelink" + count + "'>" +
+          "<form>" +
+          "<input type='hidden' id='post_id" + count + "' value=" + post_id + " />" +
+          "<input class = 'btn btn-lg' type='button' value='Like!' onclick='addlike(event, " + count + ")' />" +
+          "</form>").appendTo(newDiv);
+      }
+      $("<div class='comment' id='comment' >" +
+          "<form name='input' id='addcomment'><table><tr><td>" +
+          "<input class ='form-control comment' type='text' id='commentdata" + count + "' /></td><td>" +
+          "<input type='hidden' id='post_id" + count + "' value=" + post_id + " />" +
+          "<input class = 'btn btn-lg btn-secondary' type='submit' value='Comment' onClick='addComment(event, " + count + ")' />" +
+          "</td></tr></table></form>" +
+          "</div>").appendTo(newDiv);
+        count = count + 1;
+    document.getElementById("posts").appendChild(newDiv);
+  }
+
+  function getUserFriendRecs() {
+      $.ajax({
+        type: "get",
+        url: "/getuserdata",
+        data: {user: profile},
+        success: function(data) {
+          if (data.friend_recs != null) {
+            document.getElementById("friendrecs").innerHTML = '';
+            $("<div id='friends' class='columnE'>" +
+              "<h3>Friend Recommendations</h3>" +
+              "</div>").appendTo(document.getElementById("friendrecs"));
+            var frienddiv = document.createElement('div');
+            for (var i = 0; i < data.friend_recs.length; i++) {
+              var user = data.friend_recs[i];
+              $("<div>" +
+               "<input class = 'btn btn-lg btn-primary btn-block' type='button' id='sugg"+i+"' value='"+data.friend_recs[i]+"' onclick='searchFriend("+i+")' />" +
+               "</div><br>").appendTo(frienddiv);
+            }
+            document.getElementById("friends").append(frienddiv);
+          }
+        }
+      });
+    }
+
+  var searchFriend = function(c) {
+    var string = "#sugg" + c;
+    var friend = $(string).val();
+    document.getElementById("user").value = friend;
+    document.getElementById("searchUser").submit();
+  }
+
+  var addComment = function(e, c) {
+    count = 0;
+    var user_id = profile;
+    var string1 = "#post_id" + c;
+    var post_id = $(string1).val();
+    var string2 = "#commentdata" + c;
+    var data = $(string2).val();
+
+    $.ajax({
+           type: "post",
+           url: "/addcomment",
+           data: {user_id: user_id, post_id: post_id, data: data},
+           success: function(data) {
+             if (data.success) {
+               getNewsfeed();
+             }
+           }
+         });
+
+    e.preventDefault();
+}
+
+var addlike = function(e, c) {
+  count = 0;
+  var user_id = profile;
+  var string1 = "#post_id" + c;
+  var post_id = $(string1).val();
+
+  $.ajax({
+    type: "post",
+    url: "/addlike",
+    data: {user_id: user_id, post_id: post_id},
+    success: function(data) {
+      if (data.success) {
+        getNewsfeed();
+      }
+    }
+  });
+
+  e.preventDefault();
+}
+
+
+</script>
+</head>
+<body>
+  <div class="search">
+  <form autocomplete="off" id="searchUser" action="/searchuser" method="post">
+    <table>
+      <tr>
+        <td>
+    <div id="search">
+    <input class ="form-control" type="text" name="user" id="user" onkeyup="getPrefices(event)" />
+    <div id="searchdiv" style="background-color:white" class="dropdown"></div>
+    </div>
+  </td><td><input class = "btn btn-lg btn-primary btn-block" type="button" value="Search" onclick="searchUser(event)" />
+  </td></tr></table>
+  </form>
+</div>
+<div class="space"></div>
+<script>
+
+var postPost = function(e) {
+  var form = $(this);
+  var post_data = $('#newpost').val();
+
+  $.ajax({
+         type: "post",
+         url: "/addpost",
+         data: {post_data: post_data, user_id: profile},
+         success: function(data)
+         {
+             getNewsfeed();
+         }
+       });
+
+  e.preventDefault();
+}
+
+  var searchUser = function(e) {
+    document.getElementById("searchUser").submit();
+  }
+
+  var getPrefices = function(e) {
+    var query = document.getElementById("user").value;
+    if (query != "") {
+    $.ajax({
+      type: "get",
+      url: "getuserswithprefix",
+      data: {prefix: query},
+      success: function(data) {
+        if (data.success) {
+          var searchDiv = document.getElementById("searchdiv");
+          searchDiv.innerHTML = '';
+          for (var i = 0; i < data.users.length; i++) {
+            $("<div>" +
+              "<a class ='form-control' id='user" + i + "' onclick='searchVal(" + i + ")'>" + data.users[i] + "</a>" +
+              "</a></div>").appendTo(searchDiv);
+            document.getElementById("search").appendChild(searchDiv);
+          }
+        }
+      }
+    });
+  } else {
+    var searchDiv = document.getElementById("searchdiv");
+    searchDiv.innerHTML = '';
+  }
+}
+
+var searchVal = function(c) {
+  var string = "user" + c;
+  var val = document.getElementById(string).innerHTML;
+  document.getElementById("user").value = val;
+  document.getElementById("searchdiv").innerHTML = '';
+}
+
+</script>
+<div class="row">
+<div id="profile" class="columnP">
+<table bgcolor="#e1f0f7">
+  <tr>
+    <td>
+      <h1>
+        <div id="name"></div>
+      </h1>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div id="username">Username: </div> </td>
+  </tr>
+  <tr>
+    <td> <div id="email">E-Mail: </div> </td>
+  </tr>
+  <tr>
+    <td> <div id="affiliation">Affiliation: </div> </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="/homepage"> My Profile </a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="/editprofile">Edit Profile</a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="/newsfeed"> Newsfeed </a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="/chat"> Chat </a>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="/logout"> Logout </a>
+    </td>
+  </tr>
+</table>
+</div>
+<div class="columnA"></div>
+<div class="columnE">
+  <table bgcolor="#e3e5e8" width="100%">
+    <tr>
+      <td>
+        <h3><center>Write a Post</center></h3>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <form id="post">
+          <input class ="form-control" type="text" id="newpost">
+          <input class = "btn btn-lg btn-primary btn-block" type="button" value="Post!" onclick="postPost(event)">
+        </form>
+    </tr>
+  </table><br><br>
+<h2> <center>Newsfeed </center></h2>
+<div id="posts">
+</div>
+</div>
+<div class="columnE" id="friendrecs"></div>
+</div>
+</div>
+</body>
+</html>

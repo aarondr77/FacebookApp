@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "Please make sure you are in the adsorption folder before running."
+
+# Clear files from previous runs
+rm -rf output
+#rm -rf interm1
+#rm -rf interm2
+#rm -rf interm3
+#rm -rf interm4
+#rm -rf testingFol
+
+# Recreate the input files
+node scraper.js
+
+# create the jar
+rm -rf classes
+ant clean
+ant jar
+
+# Run the mapreduce program
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver init input interm1 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm1 interm2 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm2 interm3 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm3 interm4 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm4 interm5 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm5 interm6 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver iter interm6 interm7 1
+#hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver diff interm6 interm7 testingFol 1
+
+hadoop jar adsorption.jar edu.upenn.nets212.hw3.AdsorptionDriver composite input output iterm1 interm2 diffDir 1
+
+node output_scraper.js
